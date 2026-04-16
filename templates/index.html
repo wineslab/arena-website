@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arena — Antenna Mapper</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+
+    :root {
+       --bg:#f8f9fb;--bg2:#ffffff;--bg3:#f0f2f5;
+      --border:#d1d5db;--border2:#9ca3af;
+      --text:#1f2937;--text2:#4b5563;--text3:#9ca3af;
+      --blue:#3b82f6;--blue-dim:#dbeafe;--blue-text:#1d4ed8;
+      --green:#10b981;--green-text:#047857;
+      --amber:#f59e0b;--red:#ef4444;--red-dim:#fee2e2;
+      --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+      --radius:6px;
+    }
+
+    
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+
+    header{border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2);position:sticky;top:0;z-index:100;}
+    .logo{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue-text);letter-spacing:.05em;}
+    .logo span{color:var(--text2);font-weight:400;}
+    .badge{font-family:var(--mono);font-size:10px;background:var(--blue-dim);color:var(--blue-text);border:1px solid var(--blue);border-radius:4px;padding:2px 8px;margin-left:12px;}
+    .save-status{font-family:var(--mono);font-size:11px;color:var(--text3);margin-right:8px;}
+    .save-status.saved{color:var(--green);}
+    .save-status.saving{color:var(--amber);}
+    .header-right{display:flex;gap:8px;align-items:center;}
+
+    main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 53px);}
+    .left-pane{padding:20px 24px;border-right:1px solid var(--border);overflow-y:auto;}
+    .right-pane{padding:20px;overflow-y:auto;background:var(--bg2);}
+
+    .stats{display:flex;gap:10px;margin-bottom:20px;}
+    .stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;flex:1;}
+    .stat-label{font-size:10px;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+    .stat-val{font-size:22px;font-weight:500;font-family:var(--mono);}
+    .stat-val.mapped{color:var(--green);}
+    .stat-val.remaining{color:var(--amber);}
+
+    .section-label{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+    .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+    .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);}
+    .legend-dot{width:8px;height:8px;border-radius:50%;}
+
+    .grid-wrap{overflow-x:auto;}
+    table.ant-table{border-collapse:separate;border-spacing:5px;min-width:600px;}
+    table.ant-table th{font-family:var(--mono);font-size:11px;color:var(--text2);text-align:center;padding:4px 8px;font-weight:500;}
+    table.ant-table td.row-label{font-family:var(--mono);font-size:13px;color:var(--text2);text-align:center;font-weight:500;padding:0 6px;}
+    td.spacer-col{width:20px;border-left:1px dashed var(--border);}
+
+    .cell{border:1px solid var(--border);border-radius:var(--radius);padding:7px 5px;cursor:pointer;transition:border-color .12s,background .12s;background:var(--bg3);width:70px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+    .cell:hover{border-color:var(--border2);background:#e5e7eb;}
+    .cell.mapped{background:#d1fae5;border-color:var(--green);}
+    .cell.active{border-color:var(--blue)!important;background:#dbeafe!important;box-shadow:0 0 0 1px var(--blue);}
+    .cell-id{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text);}
+    .cell-tag{font-family:var(--mono);font-size:9px;color:var(--green-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;text-align:center;}
+    .dots{display:flex;gap:4px;margin-top:1px;}
+    .dot{width:5px;height:5px;border-radius:50%;}
+    .dot.tx{background:var(--blue);}
+    .dot.rx{background:var(--green);}
+    .dot.u{background:var(--border2);}
+    .cell-pair{display:flex;flex-direction:column;gap:5px;}
+
+    .empty-panel{color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;padding:40px 0;line-height:1.8;}
+    .panel-title{font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+    .panel-title .ant-name{font-size:16px;color:var(--text);font-weight:500;}
+    .form-group{margin-bottom:14px;}
+    .form-group label{display:block;font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+    .form-group input,.form-group select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;}
+    .form-group input:focus,.form-group select:focus{border-color:var(--blue);}
+    .form-group select option{background:var(--bg2);}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .btn{font-family:var(--mono);font-size:11px;border-radius:var(--radius);padding:8px 14px;cursor:pointer;border:1px solid;}
+    .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;}
+    .btn-primary:hover{opacity:.85;}
+    .btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2);}
+    .btn-ghost:hover{border-color:var(--text2);color:var(--text);}
+    .btn-danger{background:transparent;border-color:var(--red-dim);color:var(--red);}
+    .btn-danger:hover{background:var(--red-dim);}
+    .btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+    .divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+
+    .toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--green);color:var(--green-text);font-family:var(--mono);font-size:12px;padding:10px 16px;border-radius:var(--radius);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;}
+    .toast.show{opacity:1;transform:translateY(0);}
+
+    .floor-dot{
+      position:absolute;width:12px;height:12px;border-radius:50%;
+      transform:translate(-50%,-50%);cursor:pointer;
+      border:2px solid rgba(255,255,255,0.6);
+      transition:transform .15s,box-shadow .15s,border-color .15s;
+      z-index:2;
+    }
+    .floor-dot:hover{transform:translate(-50%,-50%) scale(1.4);z-index:3;}
+    .floor-dot.unmapped{background:var(--red);opacity:0.7;}
+    .floor-dot.mapped{background:var(--green);border-color:#fff;opacity:1;}
+    .floor-dot.active{
+      background:var(--blue)!important;border-color:#fff!important;
+      box-shadow:0 0 0 3px rgba(59,130,246,0.4);
+      transform:translate(-50%,-50%) scale(1.5);z-index:4;opacity:1!important;
+    }
+    .floor-label{
+      position:absolute;font-family:var(--mono);font-size:8px;font-weight:700;
+      color:#000;transform:translate(-50%,0);pointer-events:none;
+      text-shadow:0 0 2px rgba(255,255,255,0.6);z-index:2;
+    }
+
+    @media(max-width:900px){main{grid-template-columns:1fr;}.right-pane{border-top:1px solid var(--border);}}
+  </style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center">
+    <div class="logo">arena<span>://</span>antenna-mapper</div>
+    <div class="badge">Arena@Boston</div>
+  </div>
+  <div class="header-right">
+    <span class="save-status" id="save-status">● auto-save on</span>
+    <a class="btn btn-ghost" href="/api/export/json" download>Export JSON</a>
+    <a class="btn btn-ghost" href="/api/export/csv" download>Export CSV</a>
+  </div>
+</header>
+
+<main>
+  <div class="left-pane">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total</div><div class="stat-val" id="s-total">0</div></div>
+      <div class="stat"><div class="stat-label">Mapped</div><div class="stat-val mapped" id="s-mapped">0</div></div>
+      <div class="stat"><div class="stat-label">Remaining</div><div class="stat-val remaining" id="s-remaining">0</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>TX/Rx1</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Rx2</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--border2)"></div>Unmapped</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Mapped</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button id="tab-ant"  class="btn btn-primary" onclick="switchTab('antenna')">Antenna view</button>
+      <button id="tab-usrp" class="btn btn-ghost"   onclick="switchTab('usrp')">USRP view</button>
+      <button id="tab-floor" class="btn btn-ghost"  onclick="switchTab('floor')">Floor plan</button>
+    </div>
+    <div id="view-antenna">
+      <div class="section-label">Patch antenna map — Arena</div>
+      <div class="grid-wrap"><table class="ant-table" id="ant-table"></table></div>
+    </div>
+    <div id="view-usrp" style="display:none">
+      <div class="section-label">USRP device map — Arena</div>
+      <div id="usrp-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"></div>
+    </div>
+    <div id="view-floor" style="display:none">
+      <div class="section-label">Floor plan — Arena</div>
+      <div style="display:flex;gap:14px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--red);"></div>Unmapped
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div>Mapped
+        </div>
+      </div>
+      <div id="floor-wrap" style="position:relative;display:inline-block;width:100%;"></div>
+    </div>
+  </div>
+
+  <div class="right-pane">
+    <div id="right-content">
+      <div class="empty-panel">Select an antenna<br>from grid or floor plan</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+/* ─── Shared coordinate data ─── */
+const ANTENNA_COORDS = [
+  {id:'A1', left:33.9, top:29.3},
+  {id:'B1', left:35,   top:32.2},
+  {id:'A2', left:36.6, top:27.5},
+  {id:'B2', left:37.5, top:30.9},
+  {id:'A3', left:39.1, top:26.3},
+  {id:'B3', left:40.3, top:29.2},
+  {id:'A4', left:41.7, top:24.8},
+  {id:'B4', left:42.9, top:27.8},
+  {id:'A5', left:44.1, top:23.4},
+  {id:'B5', left:45.5, top:26.6},
+  {id:'A6', left:46.9, top:21.5},
+  {id:'B6', left:48.2, top:25.4},
+
+  {id:'C2', left:38.8, top:35.4},
+  {id:'D2', left:39.5, top:37.7},
+  {id:'C3', left:41.3, top:33.8},
+  {id:'D3', left:42.2, top:35.9},
+  {id:'C4', left:44.0, top:32.2},
+  {id:'D4', left:44.6, top:34.6},
+  {id:'C5', left:46.1, top:30.8},
+  {id:'D5', left:46.6, top:33.4},
+
+  {id:'E1', left:38.4, top:44.2},
+  {id:'F1', left:39.5, top:48.2},
+  {id:'E2', left:40.9, top:42.9},
+  {id:'F2', left:42.1, top:46.4},
+  {id:'E3', left:43.6, top:41.4},
+  {id:'F3', left:44.6, top:44.8},
+  {id:'E4', left:46.0, top:40.0},
+  {id:'F4', left:47.3, top:43.0},
+  {id:'E5', left:48.6, top:38.4},
+  {id:'F5', left:49.7, top:41.7},
+  {id:'E6', left:50.8, top:37.0},
+  {id:'F6', left:51.8, top:40.4},
+];
+
+const COORD_MAP = {};
+ANTENNA_COORDS.forEach(a => COORD_MAP[a.id] = a);
+
+
+function switchTab(tab){
+  document.getElementById('view-antenna').style.display = tab==='antenna' ? '' : 'none';
+  document.getElementById('view-usrp').style.display    = tab==='usrp'    ? '' : 'none';
+  document.getElementById('view-floor').style.display   = tab==='floor'   ? '' : 'none';
+  document.getElementById('tab-ant').className   = tab==='antenna' ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('tab-usrp').className  = tab==='usrp'    ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('tab-floor').className = tab==='floor'   ? 'btn btn-primary' : 'btn btn-ghost';
+  if(tab==='usrp')  buildUsrpView();
+  if(tab==='floor') buildFloorView();
+}
+
+
+/* ─── USRP view ─── */
+function buildUsrpView(){
+  const RACK_ORDER = [
+    '192.168.40.58','192.168.40.62',
+    '192.168.40.34','192.168.40.38',
+    '192.168.40.50','192.168.40.54',
+    '192.168.40.42','192.168.40.46',
+    '192.168.40.18','192.168.40.20',
+  ];
+  const usrps = {};
+  Object.entries(mappings).forEach(([antId, m]) => {
+    if(m.p1_serial){
+      if(!usrps[m.p1_serial]) usrps[m.p1_serial] = {model:m.p1_model, ports:[]};
+      usrps[m.p1_serial].ports.push({ant:antId, port:m.p1_port, type:'TX/Rx1'});
+    }
+    if(m.p2_serial){
+      if(!usrps[m.p2_serial]) usrps[m.p2_serial] = {model:m.p2_model, ports:[]};
+      usrps[m.p2_serial].ports.push({ant:antId, port:m.p2_port, type:'Rx2'});
+    }
+  });
+  const grid = document.getElementById('usrp-grid');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+  grid.innerHTML = '';
+  RACK_ORDER.forEach(ip => {
+    const u = usrps[ip];
+    const hasMappings = u && u.ports.length > 0;
+    const card = document.createElement('div');
+    card.style.cssText = `border:1px solid ${hasMappings?'var(--green)':'var(--border)'};border-radius:var(--radius);padding:12px;background:${hasMappings?'#d1fae5':'var(--bg3)'};cursor:pointer;`;
+    card.innerHTML = `
+      <div style="font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;">${ip}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--blue-text);margin-bottom:6px;">${u?u.model:'—'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:${hasMappings?'var(--green-text)':'var(--text3)'};">${hasMappings?u.ports.length+' ports':'not mapped'}</div>`;
+    card.onclick = () => selectUsrp(ip, u);
+    grid.appendChild(card);
+  });
+}
+
+function selectUsrp(ip, u){
+  if(!u){
+    document.getElementById('right-content').innerHTML = `<div class="empty-panel">${ip}<br>not mapped yet</div>`;
+    return;
+  }
+  const rows = u.ports.map(p => `
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:8px;background:var(--bg3);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text)">${p.ant}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:${p.type==='TX/Rx1'?'var(--blue-text)':'var(--green-text)'};">${p.type}</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text2);">port: ${p.port||'—'}</div>
+    </div>`).join('');
+  document.getElementById('right-content').innerHTML = `
+    <div class="panel-title"><span>usrp</span><span class="ant-name">${ip}</span></div>${rows}`;
+}
+
+
+/* ─── Floor plan view ─── */
+function buildFloorView(){
+  const wrap = document.getElementById('floor-wrap');
+  wrap.innerHTML = '<img id="floor-img" src="/floorplan" style="width:100%;display:block;">';
+
+  ANTENNA_COORDS.forEach(a => {
+    const isMapped = !!mappings[a.id];
+    const isActive = selected === a.id;
+
+    const dot = document.createElement('div');
+    dot.className = 'floor-dot' + (isActive ? ' active' : isMapped ? ' mapped' : ' unmapped');
+    dot.id = 'fdot-' + a.id;
+    dot.style.left = a.left + '%';
+    dot.style.top  = a.top  + '%';
+    dot.title = a.id + (isMapped ? ' (mapped)' : '');
+    dot.onclick = (e) => { e.stopPropagation(); selectCell(a.id); };
+    wrap.appendChild(dot);
+
+    const label = document.createElement('div');
+    label.className = 'floor-label';
+    label.id = 'flbl-' + a.id;
+    label.style.left = a.left + '%';
+    label.style.top  = (a.top - 2.0) + '%';
+    label.textContent = a.id;
+    wrap.appendChild(label);
+  });
+
+  wrap.onclick = function(e){
+    const img = document.getElementById('floor-img');
+    if(!img) return;
+    const rect = img.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+    console.log(`{id:'??', left:${x}, top:${y}},`);
+  };
+}
+
+function refreshFloorDots(){
+  ANTENNA_COORDS.forEach(a => {
+    const dot = document.getElementById('fdot-' + a.id);
+    if(!dot) return;
+    const isMapped = !!mappings[a.id];
+    const isActive = selected === a.id;
+    dot.className = 'floor-dot' + (isActive ? ' active' : isMapped ? ' mapped' : ' unmapped');
+    dot.title = a.id + (isMapped ? ' (mapped)' : '');
+  });
+}
+
+
+/* ─── Grid layout ─── */
+const LAYOUT = [
+  {row:'A',cols:['A1','A2','A3','A4','A5','A6'],C:'C2',D:'D2'},
+  {row:'B',cols:['B1','B2','B3','B4','B5','B6'],C:'C3',D:'D3'},
+  {row:'E',cols:['E1','E2','E3','E4','E5','E6'],C:'C4',D:'D4'},
+  {row:'F',cols:['F1','F2','F3','F4','F5','F6'],C:'C5',D:'D5'},
+];
+
+const USRP_PORTS = {
+  'X410':['A:0','A:1','A:2','A:3','B:0','B:1','B:2','B:3'],
+  'X310':['A:0','A:1','B:0','B:1'],
+  'N310':['RF0:0','RF0:1','RF1:0','RF1:1','RF0_TX','RF0_RX','RF1_TX','RF1_RX'],
+  'N320':['RF:0','RF:1','RF0_TX','RF0_RX','RF1_TX','RF1_RX','TX/RX','RX2'],
+  'B210':['A:0','A:1','B:0','B:1','TX/RX','RX2'],
+  'B200':['A:0','TX/RX','RX2'],
+  'N210':['RF:0','RF:1','TX/RX','RX2'],
+  'default':['TX_A','RX_A','RX_B','TX_B','RF0:0','RF0:1','RF1:0','RF1:1','TX/RX','RX2']
+};
+const USRP_MODELS = ['X410','X310','N310','N320','B210','B200','N210'];
+
+const LABELS={'A1p':"A1'",'B1p':"B1'"};
+function lbl(id){return LABELS[id]||id;}
+
+const ALL_IDS=[];
+LAYOUT.forEach(r=>{
+  r.cols.forEach(c=>Array.isArray(c)?ALL_IDS.push(...c):ALL_IDS.push(c));
+  ALL_IDS.push(r.C,r.D);
+});
+
+let mappings={};
+let selected=null;
+
+
+async function loadFromServer(){
+  const res=await fetch('/api/mappings');
+  mappings=await res.json();
+  buildTable();
+}
+
+async function saveToServer(){
+  setStatus('saving');
+  await fetch('/api/mappings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(mappings)});
+  setStatus('saved');
+}
+
+function setStatus(s){
+  const el=document.getElementById('save-status');
+  if(s==='saved'){el.textContent='● saved';el.className='save-status saved';}
+  else if(s==='saving'){el.textContent='● saving...';el.className='save-status saving';}
+}
+
+function buildTable(){
+  const tbl=document.getElementById('ant-table');
+  tbl.innerHTML='';
+  const thead=tbl.createTHead();
+  const hr=thead.insertRow();
+  const th=(txt,cls)=>{const e=document.createElement('th');e.textContent=txt;if(cls)e.className=cls;hr.appendChild(e);};
+  th('');
+  for(let c=1;c<=6;c++) th(c);
+  th('','spacer-col');
+  th('C');th('D');
+  const tbody=tbl.createTBody();
+  LAYOUT.forEach(rowDef=>{
+    const tr=tbody.insertRow();
+    const rl=tr.insertCell();rl.className='row-label';rl.textContent=rowDef.row;
+    rowDef.cols.forEach(colDef=>{
+      const td=tr.insertCell();td.style.verticalAlign='middle';
+      if(Array.isArray(colDef)){
+        const wrap=document.createElement('div');wrap.className='cell-pair';
+        colDef.forEach(id=>wrap.appendChild(makeCell(id)));
+        td.appendChild(wrap);
+      } else { td.appendChild(makeCell(colDef)); }
+    });
+    const sp=tr.insertCell();sp.className='spacer-col';
+    [rowDef.C,rowDef.D].forEach(id=>{
+      const td=tr.insertCell();td.style.verticalAlign='middle';
+      td.appendChild(makeCell(id));
+    });
+  });
+  updateStats();
+}
+
+function makeCell(id){
+  const m=mappings[id];
+  const div=document.createElement('div');
+  div.className='cell'+(m?' mapped':'')+(selected===id?' active':'');
+  const txCls=m?'tx':'u';const rxCls=m?'rx':'u';
+  div.innerHTML=`<span class="cell-id">${lbl(id)}</span>
+    <div class="dots"><span class="dot ${txCls}"></span><span class="dot ${rxCls}"></span></div>
+    ${m?`<span class="cell-tag">${m.p1_serial||''}</span>`:''}`;
+  div.onclick=()=>selectCell(id);
+  return div;
+}
+
+function selectCell(id){
+  selected = id;
+  buildTable();
+  refreshFloorDots();
+  renderPanel(id);
+}
+
+function renderPanel(id){
+  const m=mappings[id]||{};
+  document.getElementById('right-content').innerHTML=`
+    <div class="panel-title"><span>antenna</span><span class="ant-name">${lbl(id)}</span>${mappings[id]?'<span style="color:var(--green);font-size:10px">● mapped</span>':''}
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--blue-text);margin-bottom:8px;">— PORT 1: TX/Rx1 —</div>
+    <div class="form-row">
+      <div class="form-group"><label>USRP IP</label>
+        <input id="f-serial1" type="text" placeholder="192.168.40.xx" value="${m.p1_serial||''}"></div>
+      <div class="form-group"><label>USRP model</label>
+        <select id="f-model1" onchange="updatePorts('1')">
+          <option value="">-- model --</option>
+          ${USRP_MODELS.map(x=>`<option ${m.p1_model===x?'selected':''} value="${x}">${x}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Port</label>
+        <select id="f-port1">
+          <option value="">--</option>
+          ${(USRP_PORTS[m.p1_model]||USRP_PORTS.default).map(p=>`<option ${m.p1_port===p?'selected':''} value="${p}">${p}</option>`).join('')}
+        </select></div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--green-text);margin:10px 0 8px;">— PORT 2: Rx2 —</div>
+    <div class="form-row">
+      <div class="form-group"><label>USRP IP</label>
+        <input id="f-serial2" type="text" placeholder="192.168.40.xx" value="${m.p2_serial||''}"></div>
+      <div class="form-group"><label>USRP model</label>
+        <select id="f-model2" onchange="updatePorts('2')">
+          <option value="">-- model --</option>
+          ${USRP_MODELS.map(x=>`<option ${m.p2_model===x?'selected':''} value="${x}">${x}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Port</label>
+        <select id="f-port2">
+          <option value="">--</option>
+          ${(USRP_PORTS[m.p2_model]||USRP_PORTS.default).map(p=>`<option ${m.p2_port===p?'selected':''} value="${p}">${p}</option>`).join('')}
+        </select></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveMapping('${id}')">Save</button>
+      ${mappings[id]?`<button class="btn btn-danger" onclick="clearMapping('${id}')">Clear</button>`:''}
+    </div>`;
+}
+
+async function saveMapping(id){
+  const p1_serial=document.getElementById('f-serial1').value.trim();
+  const p1_model=document.getElementById('f-model1').value;
+  const p1_port=document.getElementById('f-port1').value;
+  const p2_serial=document.getElementById('f-serial2').value.trim();
+  const p2_model=document.getElementById('f-model2').value;
+  const p2_port=document.getElementById('f-port2').value;
+  if(p1_serial||p1_port||p2_serial||p2_port){
+    mappings[id]={p1_serial,p1_model,p1_port,p2_serial,p2_model,p2_port};
+    await saveToServer();
+    showToast('Saved '+lbl(id));
+  }
+  buildTable();
+  refreshFloorDots();
+  renderPanel(id);
+}
+
+async function clearMapping(id){
+  delete mappings[id];
+  await saveToServer();
+  buildTable();
+  refreshFloorDots();
+  renderPanel(id);
+  showToast('Cleared '+lbl(id));
+}
+
+function updateStats(){
+  const total=ALL_IDS.length, mapped=Object.keys(mappings).length;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-mapped').textContent=mapped;
+  document.getElementById('s-remaining').textContent=total-mapped;
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+function updatePorts(num){
+  const model = document.getElementById(`f-model${num}`).value;
+  const portSel = document.getElementById(`f-port${num}`);
+  const ports = USRP_PORTS[model] || USRP_PORTS.default;
+  portSel.innerHTML = `<option value="">--</option>` +
+    ports.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+
+loadFromServer();
+</script>
+</body>
+</html>
