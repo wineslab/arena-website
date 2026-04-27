@@ -1,0 +1,130 @@
+/* ============================================================
+   main.css — Arena Antenna Mapper
+   Design tokens, layout, components.
+   ============================================================ */
+
+/* ── Design tokens ────────────────────────────────────────── */
+:root {
+  --bg:#f8f9fb;--bg2:#ffffff;--bg3:#f0f2f5;
+  --border:#d1d5db;--border2:#9ca3af;
+  --text:#1f2937;--text2:#4b5563;--text3:#9ca3af;
+  --blue:#3b82f6;--blue-dim:#dbeafe;--blue-text:#1d4ed8;
+  --green:#10b981;--green-text:#047857;
+  --amber:#f59e0b;--red:#ef4444;--red-dim:#fee2e2;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --radius:6px;
+}
+
+/* ── Reset ────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── Header ───────────────────────────────────────────────── */
+header{border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2);position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue-text);letter-spacing:.05em;}
+.logo span{color:var(--text2);font-weight:400;}
+.badge{font-family:var(--mono);font-size:10px;background:var(--blue-dim);color:var(--blue-text);border:1px solid var(--blue);border-radius:4px;padding:2px 8px;margin-left:12px;}
+.save-status{font-family:var(--mono);font-size:11px;color:var(--text3);margin-right:8px;}
+.save-status.saved{color:var(--green);}
+.save-status.saving{color:var(--amber);}
+.header-right{display:flex;gap:8px;align-items:center;}
+
+/* ── Two-pane layout ──────────────────────────────────────── */
+main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 53px);max-width:1600px;margin:0 auto;width:100%;}
+.left-pane{padding:20px 24px;border-right:1px solid var(--border);overflow-y:auto;}
+.right-pane{padding:20px;overflow-y:auto;background:var(--bg2);}
+
+/* ── Stats bar ────────────────────────────────────────────── */
+.stats{display:flex;gap:10px;margin-bottom:20px;}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;flex:1;}
+.stat-label{font-size:10px;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+.stat-val{font-size:22px;font-weight:500;font-family:var(--mono);}
+.stat-val.mapped{color:var(--green);}
+.stat-val.remaining{color:var(--amber);}
+
+/* ── Section labels ───────────────────────────────────────── */
+.section-label{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+
+/* ── Antenna grid table ───────────────────────────────────── */
+.grid-wrap{overflow-x:auto;}
+table.ant-table{border-collapse:separate;border-spacing:4px;}
+table.ant-table th{font-family:var(--mono);font-size:10px;color:var(--text2);text-align:center;padding:4px 6px;font-weight:500;}
+table.ant-table td.row-label{font-family:var(--mono);font-size:12px;color:var(--text2);text-align:center;font-weight:500;padding:0 4px;}
+td.spacer-col{width:16px;border-left:1px dashed var(--border);}
+
+/* ── Antenna cell ─────────────────────────────────────────── */
+.cell{border:1px solid var(--border);border-radius:var(--radius);padding:5px 4px;cursor:pointer;transition:border-color .12s,background .12s;background:var(--bg3);width:58px;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.cell:hover{border-color:var(--border2);background:#e5e7eb;}
+.cell.mapped{background:#d1fae5;border-color:var(--green);}
+.cell.active{border-color:var(--blue)!important;background:#dbeafe!important;box-shadow:0 0 0 1px var(--blue);}
+.cell-id{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--text);}
+.cell-tag{font-family:var(--mono);font-size:8px;color:var(--green-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;text-align:center;}
+.dots{display:flex;gap:3px;margin-top:1px;}
+.dot{width:5px;height:5px;border-radius:50%;}
+.dot.tx{background:var(--blue);}
+.dot.rx{background:var(--green);}
+.dot.u{background:var(--border2);}
+
+/* ── Right panel (form) ───────────────────────────────────── */
+.empty-panel{color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;padding:40px 0;line-height:1.8;}
+.panel-title{font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.panel-title .ant-name{font-size:16px;color:var(--text);font-weight:500;}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.form-group input,.form-group select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue);}
+.form-group select option{background:var(--bg2);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn{font-family:var(--mono);font-size:11px;border-radius:var(--radius);padding:8px 14px;cursor:pointer;border:1px solid;}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;}
+.btn-primary:hover{opacity:.85;}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2);}
+.btn-ghost:hover{border-color:var(--text2);color:var(--text);}
+.btn-danger{background:transparent;border-color:var(--red-dim);color:var(--red);}
+.btn-danger:hover{background:var(--red-dim);}
+.btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+
+/* ── Toast notification ───────────────────────────────────── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--green);color:var(--green-text);font-family:var(--mono);font-size:12px;padding:10px 16px;border-radius:var(--radius);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* ── Floor plan viewport ──────────────────────────────────── */
+#floor-viewport{
+  overflow:hidden;cursor:grab;touch-action:none;
+  border:1px solid var(--border);border-radius:var(--radius);
+}
+#floor-viewport.grabbing{cursor:grabbing;}
+
+/* ── Floor plan antenna dots ──────────────────────────────── */
+.floor-dot{
+  position:absolute;width:12px;height:12px;border-radius:50%;
+  transform:translate(-50%,-50%);cursor:pointer;
+  border:2px solid rgba(255,255,255,0.6);
+  transition:box-shadow .15s,border-color .15s;
+  z-index:2;
+}
+.floor-dot:hover{box-shadow:0 0 0 4px rgba(59,130,246,0.3);z-index:3;}
+.floor-dot.unmapped{background:var(--green);opacity:0.7;}
+.floor-dot.mapped{background:var(--red);border-color:#fff;opacity:1;}
+.floor-dot.active{
+  background:var(--blue)!important;border-color:#fff!important;
+  box-shadow:0 0 0 4px rgba(59,130,246,0.4);
+  z-index:4;opacity:1!important;
+}
+.floor-label{
+  position:absolute;font-family:var(--mono);font-size:8px;font-weight:700;
+  color:#000;transform:translate(-50%,0);pointer-events:none;
+  text-shadow:0 0 2px rgba(255,255,255,0.6);z-index:2;
+}
+
+/* ── Rack view two-column layout ──────────────────────────── */
+.rack-columns{display:flex;gap:24px;align-items:flex-start;}
+.rack-col{flex:1;min-width:0;}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media(max-width:900px){
+  main{grid-template-columns:1fr;}
+  .right-pane{border-top:1px solid var(--border);}
+}

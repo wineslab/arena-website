@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arena — DB Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body  { padding: 32px; }
+    h1    { font-family: var(--mono); font-size: 14px; color: var(--blue-text);
+            margin-bottom: 24px; letter-spacing: .05em; }
+    h2    { font-family: var(--mono); font-size: 11px; color: var(--text2);
+            text-transform: uppercase; letter-spacing: .1em; margin: 24px 0 10px; }
+
+    /* ── Tab bar ── */
+    .tabs      { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Table ── */
+    table   { border-collapse: collapse; width: 100%; background: var(--bg2);
+              border: 1px solid var(--border); border-radius: var(--radius);
+              overflow: hidden; font-size: 12px; }
+    th      { font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+              letter-spacing: .08em; color: var(--text2); background: var(--bg3);
+              padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    td      { font-family: var(--mono); font-size: 11px; padding: 8px 12px;
+              border-bottom: 1px solid var(--bg3); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td      { background: var(--bg3); }
+
+    /* ── JSON view ── */
+    pre     { background: var(--bg3); border: 1px solid var(--border);
+              border-radius: var(--radius); padding: 16px; font-family: var(--mono);
+              font-size: 11px; line-height: 1.6; overflow-x: auto; color: var(--text); }
+
+    .empty-cell { color: var(--text3); text-align: center; padding: 20px; }
+    .meta       { font-family: var(--mono); font-size: 11px; color: var(--text3);
+                  margin-top: 24px; }
+    .meta a     { color: var(--blue); text-decoration: none; }
+    .meta a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <h1>arena<span style="color:var(--text3)">://</span>db-viewer
+    <span class="badge">postgres · arena</span>
+  </h1>
+
+  <!-- Tab switcher -->
+  <div class="tabs">
+    <button class="btn btn-primary" id="btn-table" onclick="showTab('table')">Table view</button>
+    <button class="btn btn-ghost"   id="btn-json"  onclick="showTab('json')">JSON view</button>
+  </div>
+
+  <!-- ══════════════ TABLE VIEW ══════════════ -->
+  <div id="panel-table" class="tab-panel active">
+
+    <h2>
+      antenna_mappings
+      <span class="badge">{{ mappings | length }} row{{ 's' if mappings | length != 1 }}</span>
+    </h2>
+    <table>
+      <thead>
+        <tr>
+          <th>antenna_id</th>
+          <th>p1_serial</th><th>p1_model</th><th>p1_port</th>
+          <th>p2_serial</th><th>p2_model</th><th>p2_port</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in mappings %}
+        <tr>
+          <td>{{ r.antenna_id }}</td>
+          <td>{{ r.p1_serial }}</td>
+          <td>{{ r.p1_model  }}</td>
+          <td>{{ r.p1_port   }}</td>
+          <td>{{ r.p2_serial }}</td>
+          <td>{{ r.p2_model  }}</td>
+          <td>{{ r.p2_port   }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-cell">no rows</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>phone_positions</h2>
+    <table>
+      <thead>
+        <tr><th>id</th><th>left (%)</th><th>top (%)</th></tr>
+      </thead>
+      <tbody>
+        {% if phone %}
+        <tr>
+          <td>{{ phone.id }}</td>
+          <td>{{ "%.2f" | format(phone.left) }}</td>
+          <td>{{ "%.2f" | format(phone.top)  }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty-cell">no rows</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- ══════════════ JSON VIEW ══════════════ -->
+  <div id="panel-json" class="tab-panel">
+
+    <h2>antenna_mappings</h2>
+    <pre>{{ mappings_json }}</pre>
+
+    <h2>phone_positions</h2>
+    <pre>{{ phone_json }}</pre>
+
+  </div>
+
+  <p class="meta">
+    <a href="/db">⟳ refresh</a> &nbsp;·&nbsp;
+    read-only &nbsp;·&nbsp;
+    <a href="/">← back to app</a>
+  </p>
+
+  <script>
+    function showTab(name) {
+      document.getElementById('panel-table').classList.toggle('active', name === 'table');
+      document.getElementById('panel-json').classList.toggle('active',  name === 'json');
+      document.getElementById('btn-table').className = name === 'table' ? 'btn btn-primary' : 'btn btn-ghost';
+      document.getElementById('btn-json').className  = name === 'json'  ? 'btn btn-primary' : 'btn btn-ghost';
+    }
+  </script>
+</body>
+</html>

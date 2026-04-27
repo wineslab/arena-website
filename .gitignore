@@ -1,6 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
 bin/
 lib/
 include/
 pyvenv.cfg
-__pycache__/
 *.zip
+
+# Environment variables — never commit secrets
+.env
+
+# Logs
+nohup.out
+*.log
+
+# Database backups
+*.sql
+
+# macOS
+.DS_Store
