@@ -3,101 +3,243 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arena — Antenna Mapper</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <title>Arena Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <script>
+    // UI scale from the window size: 1.1 at 1440×860 CSS px, growing on
+    // bigger / higher-resolution screens, never below 0.9 or above 1.7.
+    // main.css zooms the floating cards and panels by --ui-scale.
+    (function () {
+      function apply() {
+        var s = 1.1 * Math.min(innerWidth / 1440, innerHeight / 860);
+        s = Math.min(1.7, Math.max(0.9, s));
+        document.documentElement.style.setProperty('--ui-scale', s.toFixed(3));
+        window.dispatchEvent(new Event('ui-scale'));
+      }
+      apply();
+      addEventListener('resize', apply);
+    })();
+  </script>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
 </head>
-<body>
+<body class="map">
 
-<header>
-  <div style="display:flex;align-items:center">
-    <div class="badge">Arena@Boston</div>
+<!-- ═══════════════════ MAP VIEW ═══════════════════ -->
+<div id="view-floor">
+
+  <!-- Full-bleed map canvas -->
+  <div id="floor-viewport">
+    <div id="floor-wrap" style="position:relative;display:inline-block;width:100%;transform-origin:0 0;"></div>
   </div>
-  <div class="header-right">
-    <span class="save-status" id="save-status">● auto-save on</span>
-    <a class="btn btn-ghost" href="/api/export/json" download>Export JSON</a>
-    <a class="btn btn-ghost" href="/api/export/csv" download>Export CSV</a>
-  </div>
-</header>
 
-<main>
-  <div class="left-pane">
-
-    <!-- Tab switcher -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
-      <button id="tab-floor" class="btn btn-primary" onclick="switchTab('floor')">Map view</button>
-      <button id="tab-ant"   class="btn btn-ghost"   onclick="switchTab('antenna')">Rack view</button>
-    </div>
-
-    <!-- ═══ MAP VIEW ═══════════════════════════════════════════════════════ -->
-    <div id="view-floor">
-      <div style="display:flex;gap:14px;margin-bottom:10px;align-items:center;">
-        <!-- Legend -->
-        <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);">
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div>Unmapped
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);">
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--red);"></div>Mapped
-        </div>
-        <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text3);">
-          scroll to zoom · drag to pan · double-click to reset
-        </span>
+  <!-- Top-left: brand + floor selector -->
+  <div class="map-top-left">
+    <div class="card brand-card">
+      <div class="brand">
+        <span class="material-icons">place</span>
+        <span>Arena <small>@Boston</small></span>
       </div>
-
-      <!-- Floor plan canvas (SVG image + overlaid dots injected by JS) -->
-      <div id="floor-viewport">
-        <div id="floor-wrap" style="position:relative;display:inline-block;width:100%;transform-origin:0 0;"></div>
+      <div class="floor-segment" role="tablist" aria-label="Floor">
+        <button id="floor-6" class="seg active" onclick="switchFloor(6)">6th</button>
+        <button id="floor-7" class="seg"        onclick="switchFloor(7)">7th</button>
       </div>
     </div>
+  </div>
 
-    <!-- ═══ RACK VIEW ══════════════════════════════════════════════════════ -->
-    <div id="view-antenna" style="display:none">
-      <div class="rack-columns">
+  <!-- Top-right: labelled action pills (icon + text for clarity) -->
+  <div class="map-top-right">
+    <button id="tab-ant" class="action-pill" onclick="switchTab('antenna')" title="Switch to rack view">
+      <span class="material-icons">dashboard</span>
+      <span>Rack view</span>
+    </button>
+    <a class="action-pill" href="/api/export/json" download title="Download mappings as JSON">
+      <span class="material-icons">file_download</span>
+      <span>JSON</span>
+    </a>
+    <a class="action-pill" href="/api/export/csv" download title="Download mappings as CSV">
+      <span class="material-icons">table_view</span>
+      <span>CSV</span>
+    </a>
+    {% if current_role == 'admin' %}
+    <a class="action-pill" href="/admin" title="Manage user & group permissions">
+      <span class="material-icons">admin_panel_settings</span>
+      <span>Permissions</span>
+    </a>
+    <a class="action-pill" href="/db" title="Open the database viewer">
+      <span class="material-icons">storage</span>
+      <span>Database</span>
+    </a>
+    {% endif %}
+    <a class="action-pill" href="{{ url_for('auth.logout') }}"
+       title="Signed in as {{ current_user.username }} ({{ current_role }})">
+      <span class="material-icons">logout</span>
+      <span>{{ current_user.username }} · {{ current_role }}</span>
+    </a>
+    <!-- Hidden save status (still updated by JS for internal state) -->
+    <span class="save-status" id="save-status" style="display:none">Saved</span>
+  </div>
 
-        <!-- Arena 1 column -->
-        <div class="rack-col">
-          <div class="stats">
-            <div class="stat">
-              <div class="stat-label">Arena 1 USRPs</div>
-              <div class="stat-val" id="s-ar1-usrp">0/4</div>
-            </div>
-          </div>
-          <div class="section-label">Arena 1 — Antenna</div>
-          <div class="grid-wrap"><table class="ant-table" id="ant-table-ar1"></table></div>
-          <div class="section-label" style="margin-top:20px;">Arena 1 — USRP</div>
-          <div id="usrp-grid-ar1"></div>
+  <!-- Bottom-left: layers card -->
+  <div class="map-bottom-left">
+    <div class="card layers-card">
+      <div class="layers-header">
+        <span class="material-icons">layers</span>
+        <span>Layers</span>
+      </div>
+      <div class="layer-group" data-layer-group="usrp">
+        <label class="layer-chip" data-layer="usrp">
+          <input type="checkbox" checked onchange="toggleLayer('usrp')">
+          <span class="swatch swatch-usrp"></span>
+          <span class="layer-name">USRP</span>
+          <span class="layer-count" id="layer-count-usrp">0</span>
+        </label>
+        <div class="layer-filter">
+          <button data-f="all"      class="lf-btn active" onclick="setFilter('usrp','all')">All</button>
+          <button data-f="mapped"   class="lf-btn"        onclick="setFilter('usrp','mapped')">Mapped</button>
+          <button data-f="unmapped" class="lf-btn"        onclick="setFilter('usrp','unmapped')">Unmapped</button>
         </div>
-
-        <!-- Arena 2 column -->
-        <div class="rack-col">
-          <div class="stats">
-            <div class="stat">
-              <div class="stat-label">Arena 2 USRPs</div>
-              <div class="stat-val" id="s-ar2-usrp">0/10</div>
-            </div>
-          </div>
-          <div class="section-label">Arena 2 — Antenna</div>
-          <div class="grid-wrap"><table class="ant-table" id="ant-table-ar2"></table></div>
-          <div class="section-label" style="margin-top:20px;">Arena 2 — USRP</div>
-          <div id="usrp-grid-ar2"></div>
+      </div>
+      <div class="layer-group" data-layer-group="radio">
+        <label class="layer-chip" data-layer="radio">
+          <input type="checkbox" checked onchange="toggleLayer('radio')">
+          <span class="swatch swatch-radio"></span>
+          <span class="layer-name">Radios</span>
+          <span class="layer-count" id="layer-count-radio">0</span>
+        </label>
+        <div class="layer-filter">
+          <button data-f="all"      class="lf-btn active" onclick="setFilter('radio','all')">All</button>
+          <button data-f="mapped"   class="lf-btn"        onclick="setFilter('radio','mapped')">Mapped</button>
+          <button data-f="unmapped" class="lf-btn"        onclick="setFilter('radio','unmapped')">Unmapped</button>
         </div>
-
+      </div>
+      <div class="layer-group" data-layer-group="ue">
+        <label class="layer-chip" data-layer="ue">
+          <input type="checkbox" checked onchange="toggleLayer('ue')">
+          <span class="swatch swatch-ue"></span>
+          <span class="layer-name">UEs</span>
+          <span class="layer-count" id="layer-count-ue">0</span>
+        </label>
+        <div class="layer-filter">
+          <button data-f="all"      class="lf-btn active" onclick="setFilter('ue','all')">All</button>
+          <button data-f="mapped"   class="lf-btn"        onclick="setFilter('ue','mapped')">Mapped</button>
+          <button data-f="unmapped" class="lf-btn"        onclick="setFilter('ue','unmapped')">Unmapped</button>
+        </div>
       </div>
     </div>
-
   </div>
 
-  <!-- Right panel: antenna config form (populated by JS on selection) -->
-  <div class="right-pane">
-    <div id="right-content">
-      <div class="empty-panel">Select an antenna<br>from grid or floor plan</div>
+  <!-- Bottom-right: zoom controls -->
+  <div class="map-bottom-right">
+    <div class="zoom-stack">
+      <button class="zoom-btn" onclick="floorZoom(0.25)" title="Zoom in">
+        <span class="material-icons">add</span>
+      </button>
+      <div class="zoom-sep"></div>
+      <button class="zoom-btn" onclick="floorZoom(-0.25)" title="Zoom out">
+        <span class="material-icons">remove</span>
+      </button>
+      <div class="zoom-sep"></div>
+      <button class="zoom-btn" onclick="floorReset()" title="Reset view">
+        <span class="material-icons">crop_free</span>
+      </button>
     </div>
   </div>
-</main>
+
+  <!-- Bottom-center: USRP mapping legend (only meaningful when USRP layer is on) -->
+  <div class="map-bottom-center" id="usrp-legend">
+    <div class="card legend-card">
+      <span class="legend-item"><span class="legend-dot legend-unmapped"></span>Unmapped</span>
+      <span class="legend-item"><span class="legend-dot legend-mapped"></span>Mapped</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ RACK VIEW: 3D lab room (static/js/rack3d.js) ═══════════════════ -->
+<div id="view-antenna" style="display:none">
+  <div id="lab3d-stage" class="lab3d-stage"></div>
+
+  <!-- Entry ident (static/js/intro.js): INSI, the N bursts into ribbons -->
+  <div id="lab-intro" class="lab-intro" aria-hidden="true"></div>
+
+  <div class="lab-top">
+    <div class="card lab-title">
+      <span class="material-icons">meeting_room</span>
+      <span>INSI lab</span>
+    </div>
+    <div class="card floor-segment lab-views" id="lab-views" role="tablist" aria-label="Camera view"></div>
+    <div class="card lab-avail" id="lab-avail" title="Free right now"></div>
+    <div class="lab-actions">
+      <span id="run-all-status" class="card lab-run-status"></span>
+      <button id="run-all-btn" class="btn btn-primary" onclick="runAllUsrpTests()"
+              title="Test every USRP in the rack, one at a time">Run all</button>
+      <button id="tab-floor" class="action-pill" onclick="switchTab('floor')" title="Switch to the floor-plan map">
+        <span class="material-icons">map</span>
+        <span>Map view</span>
+      </button>
+    </div>
+  </div>
+
+  <aside id="lab-list" class="card lab-list" hidden></aside>
+
+  <div class="lab-bottom">
+    <div class="card lab-legend">
+      <span class="lab-legend-title">USRP last test</span>
+      <span><i style="background:#34a853"></i>pass</span>
+      <span><i style="background:#ea4335"></i>fail</span>
+      <span><i style="background:#f9ab00"></i>error</span>
+      <span><i style="background:#4c8df6"></i>testing</span>
+      <span><i style="background:#3c4043"></i>untested</span>
+    </div>
+    <div class="card lab-help">
+      <span><b>Left-drag</b> look around</span>
+      <span><b>Right-drag</b> move</span>
+      <span><b>Scroll</b> zoom</span>
+      <span><b>Click</b> a bench or USRP</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Rack view is the default; #map opens the floor plan. Set before first
+  // paint so a refresh never flashes the other view.
+  (function () {
+    var map = location.hash === '#map';
+    document.getElementById('view-floor').style.display   = map ? '' : 'none';
+    document.getElementById('view-antenna').style.display = map ? 'none' : '';
+  })();
+</script>
+
+<!-- ═══════════════════ DETAIL PANEL (slides in from right) ═══════════════════ -->
+<aside class="detail-panel" id="detail-panel">
+  <div class="panel-resizer" id="panel-resizer" title="Drag to resize"></div>
+  <button class="detail-close" onclick="closeDetailPanel()" title="Close">
+    <span class="material-icons">close</span>
+  </button>
+  <div id="right-content">
+    <div class="empty-panel">
+      <span class="material-icons">place</span>
+      <p>Select an antenna<br>from the map</p>
+    </div>
+  </div>
+</aside>
 
 <div class="toast" id="toast"></div>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/phone.js') }}"></script>
+<script src="{{ url_for('static', filename='js/devices.js') }}"></script>
+<script>window.CURRENT_USER = {{ current_user.username|tojson }};</script>
+<script src="{{ url_for('static', filename='js/reserve.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/rack3d.js') }}"></script>
 </body>
 </html>

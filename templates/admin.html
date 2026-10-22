@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arena — Permissions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body        { padding: 32px; max-width: 980px; margin: 0 auto; }
+    .topbar     { display:flex; align-items:center; justify-content:space-between; margin-bottom: 24px; }
+    .topbar .brand { display:flex; align-items:center; gap:8px; font-weight:700; font-size:18px; }
+    .topbar .brand .material-icons { color: var(--google-blue); }
+    .topbar-actions { display:flex; gap:8px; align-items:center; }
+    .pill       { display:inline-flex; align-items:center; gap:6px; padding:8px 14px;
+                  border:1px solid var(--border); border-radius: var(--radius-pill);
+                  background: var(--bg-card); color: var(--text); text-decoration:none;
+                  font-size:13px; font-weight:500; box-shadow: var(--shadow-1); cursor:pointer; }
+    .pill:hover { background: var(--bg-hover); }
+    .pill .material-icons { font-size:18px; }
+
+    .lead       { color: var(--text2); margin-bottom: 22px; font-size:13px; }
+    .lead code  { font-family: var(--mono); background: var(--bg3); padding:1px 6px; border-radius: var(--radius-sm); }
+
+    .card       { background: var(--bg-card); border:1px solid var(--border); border-radius: var(--radius);
+                  box-shadow: var(--shadow-1); padding: 20px 22px; margin-bottom: 22px; }
+    .card h2    { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color: var(--text2);
+                  margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+    .card .sub  { color: var(--text3); font-size:12px; margin-bottom:14px; }
+    .card h2 .count { font-family:var(--mono); font-size:10px; background:var(--bg3); border:1px solid var(--border);
+                      border-radius: var(--radius-pill); padding:1px 8px; color:var(--text2); letter-spacing:0; }
+
+    .legend     { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color: var(--text2); }
+    .legend b   { color: var(--text); }
+
+    table       { border-collapse: collapse; width:100%; font-size:13px; }
+    th          { font-family: var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+                  color: var(--text2); text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
+    td          { padding:8px 10px; border-bottom:1px solid var(--bg3); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    td .subj    { font-family: var(--mono); font-weight:500; }
+    .muted      { color: var(--text3); }
+    .empty      { color: var(--text3); font-style:italic; padding:14px 10px; }
+
+    .badge      { font-size:10px; font-family:var(--mono); padding:2px 8px; border-radius: var(--radius-pill);
+                  border:1px solid var(--border); text-transform:uppercase; letter-spacing:.04em; }
+    .badge.you  { background: var(--blue-dim); color: var(--blue-text); border-color: var(--blue-dim); }
+    .badge.set  { background: #e6f4ea; color: var(--green-text); border-color:#ceead6; }
+
+    /* role selector — color hints by current value via data-role */
+    select, input[type=text] { font-family: var(--font); font-size:13px; padding:7px 9px;
+                  border:1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text); }
+    select:focus, input:focus { outline:none; border-color: var(--google-blue); }
+    select.role[data-role="none"]   { color: var(--text3); }
+    select.role[data-role="admin"]  { border-color:#f4b8b3; background:#fff5f4; font-weight:500; }
+    select.role[data-role="editor"] { border-color:#fde2b3; background:#fffaf0; font-weight:500; }
+    select.role[data-role="viewer"] { border-color:#cfe3fb; background:#f5faff; }
+
+    .btn        { font-family: var(--font); font-size:13px; font-weight:500; padding:8px 16px;
+                  border-radius: var(--radius-sm); border:none; cursor:pointer; }
+    .btn-primary{ background: var(--google-blue); color:#fff; }
+    .btn-primary:hover { background: var(--google-blue-hover); }
+    .btn-danger { background:transparent; color: var(--google-red); border:1px solid transparent; }
+    .btn-danger:hover { background: var(--red-dim); }
+
+    .addrow     { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .addrow .field { display:flex; flex-direction:column; gap:4px; }
+    .addrow label  { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color: var(--text2); }
+    .addrow input[type=text] { min-width: 220px; }
+
+    .toast      { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#202124; color:#fff;
+                  padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none;
+                  transition:opacity .2s; box-shadow: var(--shadow-2); z-index:50; }
+    .toast.show { opacity:1; }
+    .toast.err  { background: var(--google-red); }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand"><span class="material-icons">admin_panel_settings</span> Arena · Permissions</div>
+    <div class="topbar-actions">
+      <a class="pill" href="/"><span class="material-icons">map</span> Map</a>
+      <a class="pill" href="/db"><span class="material-icons">storage</span> Database</a>
+      <a class="pill" href="{{ url_for('auth.logout') }}">
+        <span class="material-icons">logout</span> {{ current_user.username }} · {{ current_role }}
+      </a>
+    </div>
+  </div>
+
+  <p class="lead">
+    LDAP handles sign-in; this panel (stored in the local Arena DB) decides what each
+    <b>person</b> or <b>LDAP group</b> can do. A direct user role wins; otherwise the
+    highest role among someone's groups applies. People with nothing set fall back to
+    <code>{{ config.DEFAULT_ROLE or 'no access' }}</code>.
+  </p>
+  <div class="card" style="padding:14px 22px;">
+    <div class="legend">
+      <span><b>viewer</b> — read-only</span>
+      <span><b>editor</b> — viewer + edit mappings/devices, run USRP tests</span>
+      <span><b>admin</b> — editor + database viewer & this panel</span>
+      <span><b>none</b> — no role from this entry</span>
+    </div>
+  </div>
+
+  <!-- ─────────────── GROUPS ─────────────── -->
+  <div class="card">
+    <h2><span class="material-icons" style="font-size:18px">groups</span> Groups
+        <span class="count" id="grp-count">0</span></h2>
+    <div class="sub">Your LDAP groups. Pick a role to grant it to everyone in that group;
+        <code>— none —</code> removes the grant. (A direct user role still wins.)</div>
+    <table>
+      <thead><tr><th>Group</th><th style="width:200px">Role</th></tr></thead>
+      <tbody id="tbody-group"></tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────── PEOPLE (by username) ─────────────── -->
+  <div class="card">
+    <h2><span class="material-icons" style="font-size:18px">person</span> People
+        <span class="count" id="usr-count">0</span></h2>
+    <div class="sub">Individual user overrides (a direct user role beats any group role).</div>
+    <table>
+      <thead><tr><th>Username</th><th style="width:160px">Role</th><th></th></tr></thead>
+      <tbody id="tbody-user"></tbody>
+    </table>
+    <div class="addrow" style="margin-top:16px;">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="add-subject" list="dl-users" autocomplete="off"
+               placeholder="start typing a username">
+        <datalist id="dl-users"></datalist>
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="add-role">
+          {% for r in roles %}<option value="{{ r }}"{% if r == 'editor' %} selected{% endif %}>{{ r }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addUser()">Add person</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const ROLES = {{ roles | tojson }};          // ['viewer','editor','admin']
+const ME    = {{ current_user.username | tojson }};
+
+let DIRECTORY  = { users: [], groups: [] };    // groups = signed-in admin's own LDAP groups
+let GRANTS     = [];                            // all grants
+let GROUP_GRANT = {};                           // group name -> {id, role} (current grant, if any)
+
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => { t.className = 'toast'; }, 2600);
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function api(method, url, body) {
+  const opt = { method, headers: {} };
+  if (body) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  const res = await fetch(url, opt);
+  let data = {}; try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+function roleOptions(current) {
+  const none = `<option value="none"${!current ? ' selected':''}>— none —</option>`;
+  return none + ROLES.map(r => `<option value="${r}"${r===current?' selected':''}>${r}</option>`).join('');
+}
+
+/* ── Groups ── lists the signed-in admin's own LDAP groups, each with a role.
+   Handlers are attached by delegation (see wireEvents); values ride in
+   data-* attributes so names never break the HTML the way inline onchange did. */
+function renderGroups() {
+  const groups = DIRECTORY.groups;
+  document.getElementById('grp-count').textContent = groups.length;
+  const tb = document.getElementById('tbody-group');
+  if (!groups.length) {
+    tb.innerHTML = '<tr><td colspan="2" class="empty">No groups found for your account — sign out and back in to refresh.</td></tr>';
+    return;
+  }
+  tb.innerHTML = groups.map(name => {
+    const g   = GROUP_GRANT[name] || {};
+    const cur = g.role || '';
+    return `<tr>
+      <td><span class="subj">${escapeHtml(name)}</span></td>
+      <td><select class="role grp-role" data-role="${cur || 'none'}"
+            data-name="${escapeHtml(name)}" data-id="${g.id != null ? g.id : ''}">${roleOptions(cur)}</select></td>
+    </tr>`;
+  }).join('');
+}
+
+async function setGroupRole(name, role, id, el) {
+  try {
+    if (role === 'none') {
+      if (id != null) await api('DELETE', '/api/admin/grants/' + id);
+      toast(name + ' → no role');
+    } else {
+      await api('POST', '/api/admin/grants', { subject_type:'group', subject:name, role });
+      toast(name + ' → ' + role);
+    }
+    await load();
+  } catch (e) { toast(e.message, true); await load(); }
+}
+
+/* ── People ── */
+function renderUsers() {
+  const users = GRANTS.filter(g => g.subject_type === 'user');
+  document.getElementById('usr-count').textContent = users.length;
+  const tb = document.getElementById('tbody-user');
+  tb.innerHTML = users.length ? users.map(g => {
+    const isSelf = g.subject === ME;
+    return `<tr>
+      <td><span class="subj">${escapeHtml(g.subject)}</span>${isSelf?' <span class="badge you">you</span>':''}</td>
+      <td><select class="role usr-role" data-role="${g.role}"
+            data-name="${escapeHtml(g.subject)}" data-id="${g.id}">${roleOptions(g.role)}</select></td>
+      <td style="text-align:right">${isSelf
+        ? '<span class="muted">can\'t remove yourself</span>'
+        : `<button class="btn btn-danger usr-remove" data-name="${escapeHtml(g.subject)}" data-id="${g.id}">Remove</button>`}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="3" class="empty">No individual overrides.</td></tr>';
+}
+
+async function setUserRole(name, role, id, el) {
+  try {
+    if (role === 'none') { await api('DELETE', '/api/admin/grants/' + id); toast(name + ' removed'); }
+    else { await api('POST', '/api/admin/grants', { subject_type:'user', subject:name, role }); toast(name + ' → ' + role); }
+    await load();
+  } catch (e) { toast(e.message, true); await load(); }
+}
+
+async function addUser() {
+  const subject = document.getElementById('add-subject').value.trim();
+  const role    = document.getElementById('add-role').value;
+  if (!subject) { toast('Enter a username', true); return; }
+  try {
+    await api('POST', '/api/admin/grants', { subject_type:'user', subject, role });
+    document.getElementById('add-subject').value = '';
+    toast(`${subject} → ${role}`);
+    await load();
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ── Load everything ── */
+async function load() {
+  [GRANTS, DIRECTORY] = await Promise.all([
+    api('GET', '/api/admin/grants'),
+    api('GET', '/api/admin/directory'),
+  ]);
+  GROUP_GRANT = {};
+  for (const g of GRANTS) if (g.subject_type === 'group') GROUP_GRANT[g.subject] = { id: g.id, role: g.role };
+  document.getElementById('dl-users').innerHTML =
+    DIRECTORY.users.map(n => `<option value="${escapeHtml(n)}">`).join('');
+  renderGroups();
+  renderUsers();
+}
+
+/* Delegated handlers — attached once to the persistent <tbody> elements, so
+   they keep working after every innerHTML re-render. */
+function wireEvents() {
+  document.getElementById('tbody-group').addEventListener('change', e => {
+    const el = e.target;
+    if (!el.classList.contains('grp-role')) return;
+    const id = el.dataset.id === '' ? null : Number(el.dataset.id);
+    setGroupRole(el.dataset.name, el.value, id, el);
+  });
+  const tbu = document.getElementById('tbody-user');
+  tbu.addEventListener('change', e => {
+    const el = e.target;
+    if (el.classList.contains('usr-role'))
+      setUserRole(el.dataset.name, el.value, Number(el.dataset.id), el);
+  });
+  tbu.addEventListener('click', e => {
+    const el = e.target;
+    if (el.classList.contains('usr-remove'))
+      setUserRole(el.dataset.name, 'none', Number(el.dataset.id), el);
+  });
+}
+
+wireEvents();
+load();
+</script>
+</body>
+</html>

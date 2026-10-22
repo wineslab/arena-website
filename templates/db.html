@@ -11,35 +11,60 @@
     h1    { font-family: var(--mono); font-size: 14px; color: var(--blue-text);
             margin-bottom: 24px; letter-spacing: .05em; }
     h2    { font-family: var(--mono); font-size: 11px; color: var(--text2);
-            text-transform: uppercase; letter-spacing: .1em; margin: 24px 0 10px; }
+            text-transform: uppercase; letter-spacing: .1em;
+            margin: 28px 0 10px; display:flex; align-items:center; gap:8px; }
+    h2 .badge { font-family: var(--mono); font-size:9px; padding:2px 7px;
+                background: var(--bg3); border:1px solid var(--border);
+                border-radius:8px; color: var(--text2); font-weight:400;
+                letter-spacing:0; text-transform:none; }
 
     /* ── Tab bar ── */
     .tabs      { display: flex; gap: 8px; margin-bottom: 24px; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* ── Table ── */
+    /* ── Tables ── */
+    .tbl-wrap { overflow-x: auto; }
     table   { border-collapse: collapse; width: 100%; background: var(--bg2);
               border: 1px solid var(--border); border-radius: var(--radius);
               overflow: hidden; font-size: 12px; }
     th      { font-family: var(--mono); font-size: 9px; text-transform: uppercase;
               letter-spacing: .08em; color: var(--text2); background: var(--bg3);
-              padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+              padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+              white-space: nowrap; }
     td      { font-family: var(--mono); font-size: 11px; padding: 8px 12px;
-              border-bottom: 1px solid var(--bg3); color: var(--text); }
+              border-bottom: 1px solid var(--bg3); color: var(--text);
+              white-space: nowrap; vertical-align: top; }
     tr:last-child td { border-bottom: none; }
     tr:hover td      { background: var(--bg3); }
+    td.num  { text-align: right; }
+    td.dim  { color: var(--text3); }
+    td.long { max-width: 320px; white-space: normal; word-break: break-word; }
+
+    /* Status pills inside test_results */
+    .pill   { display:inline-block; padding:1px 7px; border-radius:8px;
+              font-size:9px; font-family:var(--mono); }
+    .pill.success { background:#d1fae5; color:var(--green-text); }
+    .pill.failure { background:#fee2e2; color:#b91c1c; }
+    .pill.error   { background:#fef3c7; color:#92400e; }
+    .pill.running { background:#dbeafe; color:var(--blue-text); }
 
     /* ── JSON view ── */
     pre     { background: var(--bg3); border: 1px solid var(--border);
               border-radius: var(--radius); padding: 16px; font-family: var(--mono);
               font-size: 11px; line-height: 1.6; overflow-x: auto; color: var(--text); }
 
-    .empty-cell { color: var(--text3); text-align: center; padding: 20px; }
+    .empty-cell { color: var(--text3); text-align: center; padding: 20px;
+                  font-style: italic; }
     .meta       { font-family: var(--mono); font-size: 11px; color: var(--text3);
                   margin-top: 24px; }
     .meta a     { color: var(--blue); text-decoration: none; }
     .meta a:hover { text-decoration: underline; }
+
+    /* Auto-refresh control */
+    .auto-row { display:flex; align-items:center; gap:10px; margin-bottom:12px;
+                font-family:var(--mono); font-size:10px; color:var(--text2); }
+    .auto-row label { display:flex; align-items:center; gap:5px; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -54,13 +79,23 @@
     <button class="btn btn-ghost"   id="btn-json"  onclick="showTab('json')">JSON view</button>
   </div>
 
+  <div class="auto-row">
+    <label>
+      <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
+      auto-refresh every <span id="auto-secs">3</span>s
+    </label>
+    <span id="auto-status" style="color:var(--text3);"></span>
+  </div>
+
   <!-- ══════════════ TABLE VIEW ══════════════ -->
   <div id="panel-table" class="tab-panel active">
 
+    <!-- ─── antenna_mappings ─── -->
     <h2>
       antenna_mappings
-      <span class="badge">{{ mappings | length }} row{{ 's' if mappings | length != 1 }}</span>
+      <span class="badge">{{ mappings | length }} row{{ 's' if mappings | length != 1 else '' }}</span>
     </h2>
+    <div class="tbl-wrap">
     <table>
       <thead>
         <tr>
@@ -73,48 +108,152 @@
         {% for r in mappings %}
         <tr>
           <td>{{ r.antenna_id }}</td>
-          <td>{{ r.p1_serial }}</td>
-          <td>{{ r.p1_model  }}</td>
-          <td>{{ r.p1_port   }}</td>
-          <td>{{ r.p2_serial }}</td>
-          <td>{{ r.p2_model  }}</td>
-          <td>{{ r.p2_port   }}</td>
+          <td>{{ r.p1_serial or '' }}</td>
+          <td>{{ r.p1_model  or '' }}</td>
+          <td>{{ r.p1_port   or '' }}</td>
+          <td>{{ r.p2_serial or '' }}</td>
+          <td>{{ r.p2_model  or '' }}</td>
+          <td>{{ r.p2_port   or '' }}</td>
         </tr>
         {% else %}
         <tr><td colspan="7" class="empty-cell">no rows</td></tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
 
-    <h2>phone_positions</h2>
+    <!-- ─── phone_positions ─── -->
+    <h2>
+      phone_positions
+      <span class="badge">{{ phones | length }} row{{ 's' if phones | length != 1 else '' }}</span>
+    </h2>
+    <div class="tbl-wrap">
     <table>
       <thead>
-        <tr><th>id</th><th>left (%)</th><th>top (%)</th></tr>
+        <tr><th>id</th><th>floor</th><th>left&nbsp;(%)</th><th>top&nbsp;(%)</th></tr>
       </thead>
       <tbody>
-        {% if phone %}
+        {% for p in phones %}
         <tr>
-          <td>{{ phone.id }}</td>
-          <td>{{ "%.2f" | format(phone.left) }}</td>
-          <td>{{ "%.2f" | format(phone.top)  }}</td>
+          <td class="num">{{ p.id }}</td>
+          <td class="num">{{ p.floor }}</td>
+          <td class="num">{{ "%.2f" | format(p.left) }}</td>
+          <td class="num">{{ "%.2f" | format(p.top)  }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="empty-cell">no rows</td></tr>
-        {% endif %}
+        <tr><td colspan="4" class="empty-cell">no rows</td></tr>
+        {% endfor %}
       </tbody>
     </table>
+    </div>
+
+    <!-- ─── devices (radios + UEs) ─── -->
+    <h2>
+      devices
+      <span class="badge">{{ devices | length }} row{{ 's' if devices | length != 1 else '' }}</span>
+    </h2>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>id</th><th>floor</th><th>kind</th><th>name</th>
+          <th>left&nbsp;(%)</th><th>top&nbsp;(%)</th><th>mapped</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in devices %}
+        <tr>
+          <td class="num">{{ d.id }}</td>
+          <td class="num">{{ d.floor }}</td>
+          <td>{{ d.kind }}</td>
+          <td>{{ d.name }}</td>
+          <td class="num">{{ "%.2f" | format(d.left) }}</td>
+          <td class="num">{{ "%.2f" | format(d.top)  }}</td>
+          <td>{% if d.mapped %}<span class="pill success">✓ mapped</span>{% else %}<span style="color:var(--text-tertiary,#80868b)">unmapped</span>{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-cell">no rows</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <!-- ─── antenna_positions (USRP drag overrides) ─── -->
+    <h2>
+      antenna_positions
+      <span class="badge">{{ antenna_positions | length }} row{{ 's' if antenna_positions | length != 1 else '' }}</span>
+    </h2>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>antenna_id</th><th>left&nbsp;(%)</th><th>top&nbsp;(%)</th><th>updated_at</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in antenna_positions %}
+        <tr>
+          <td>{{ r.antenna_id }}</td>
+          <td class="num">{{ "%.2f" | format(r.left) }}</td>
+          <td class="num">{{ "%.2f" | format(r.top)  }}</td>
+          <td class="dim">{{ r.updated_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty-cell">no overrides — every antenna is at its default position</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <!-- ─── test_results ─── -->
+    <h2>
+      test_results
+      <span class="badge">{{ test_results | length }} row{{ 's' if test_results | length != 1 else '' }}</span>
+    </h2>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>id</th><th>usrp_ip</th><th>test_type</th><th>status</th>
+          <th>started_at</th><th>finished_at</th><th>error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in test_results %}
+        <tr>
+          <td class="num">{{ t.id }}</td>
+          <td>{{ t.usrp_ip }}</td>
+          <td>{{ t.test_type }}</td>
+          <td><span class="pill {{ t.status }}">{{ t.status }}</span></td>
+          <td class="dim">{{ t.started_at }}</td>
+          <td class="dim">{{ t.finished_at or '—' }}</td>
+          <td class="long dim">{{ t.error or '' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-cell">no rows</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
 
   </div>
 
   <!-- ══════════════ JSON VIEW ══════════════ -->
   <div id="panel-json" class="tab-panel">
-
     <h2>antenna_mappings</h2>
     <pre>{{ mappings_json }}</pre>
 
     <h2>phone_positions</h2>
-    <pre>{{ phone_json }}</pre>
+    <pre>{{ phones_json }}</pre>
 
+    <h2>devices</h2>
+    <pre>{{ devices_json }}</pre>
+
+    <h2>antenna_positions</h2>
+    <pre>{{ antenna_positions_json }}</pre>
+
+    <h2>test_results</h2>
+    <pre>{{ test_results_json }}</pre>
   </div>
 
   <p class="meta">
@@ -129,6 +268,21 @@
       document.getElementById('panel-json').classList.toggle('active',  name === 'json');
       document.getElementById('btn-table').className = name === 'table' ? 'btn btn-primary' : 'btn btn-ghost';
       document.getElementById('btn-json').className  = name === 'json'  ? 'btn btn-primary' : 'btn btn-ghost';
+    }
+
+    // Optional 3-second auto-refresh so edits in the main app show up live.
+    let _autoRefreshTimer = null;
+    function toggleAutoRefresh() {
+      const on = document.getElementById('auto-refresh').checked;
+      const status = document.getElementById('auto-status');
+      if (on) {
+        _autoRefreshTimer = setInterval(() => location.reload(), 3000);
+        status.textContent = 'on — reloading every 3s';
+      } else {
+        if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+        _autoRefreshTimer = null;
+        status.textContent = '';
+      }
     }
   </script>
 </body>

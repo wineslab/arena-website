@@ -13,12 +13,30 @@ pyvenv.cfg
 # Environment variables — never commit secrets
 .env
 
-# Logs
+# Logs & runtime
 nohup.out
 *.log
+logs/
+run/
 
 # Database backups
 *.sql
 
 # macOS
 .DS_Store
+
+# Virtualenv (project venv lives in ./arena-website/)
+arena-website/
+
+# Local databases
+*.db
+instance/
+
+# Test/measurement output
+output/
+*.dat
+plotout_*.png
+
+# Local tooling / placeholders
+.claude/
+requirements.sh

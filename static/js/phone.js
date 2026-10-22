@@ -9,29 +9,49 @@
   'use strict';
 
   /* ── state ── */
-  let phonePos     = { left: 50, top: 50 };   // % offsets over floor-img
-  let isDragging   = false;
+  // Per-floor cache so switching floors doesn't blank the marker while we
+  // wait for the server. Default centred until a position is loaded/set.
+  const phonePositions = {};   // { 6: {left, top}, 7: {left, top} }
+  let   loadedFloor    = null; // last floor we successfully fetched
+  let   isDragging     = false;
+  let   preDragPos     = null; // position before the current drag — for undo
+
+  /** Floor currently displayed by app.js (defined in app.js as `let currentFloor`). */
+  function activeFloor() {
+    return (typeof currentFloor === 'number') ? currentFloor : 6;
+  }
+
+  /** Get cached position for a floor (or a sensible default). */
+  function posFor(floor) {
+    return phonePositions[floor] || { left: 50, top: 50 };
+  }
 
   /* ─────────────────────────────────────────
      PERSISTENCE
   ───────────────────────────────────────── */
-  async function loadPos() {
+  async function loadPos(floor) {
     try {
-      const res  = await fetch('/api/phones');
+      const res  = await fetch('/api/phones/' + floor);
       const data = await res.json();
       if (typeof data.left === 'number' && typeof data.top === 'number') {
-        phonePos = { left: data.left, top: data.top };
-        applyPos();
+        phonePositions[floor] = { left: data.left, top: data.top };
+      } else if (!phonePositions[floor]) {
+        phonePositions[floor] = { left: 50, top: 50 };
       }
+      loadedFloor = floor;
+      if (activeFloor() === floor) applyPos();
     } catch (_) { /* server not ready yet — keep default */ }
   }
 
   async function savePos() {
+    const floor = activeFloor();
+    const pos   = phonePositions[floor];
+    if (!pos) return;
     try {
-      await fetch('/api/phones', {
+      await fetch('/api/phones/' + floor, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(phonePos),
+        body:    JSON.stringify(pos),
       });
     } catch (_) {}
   }
@@ -42,7 +62,10 @@
   function makeMarker() {
     const el = document.createElement('div');
     el.id    = 'phone-marker';
-    el.title = 'Phone — drag to reposition';
+    // Tag as a UE so the floor-plan UE layer toggle (in app.js / main.css)
+    // hides/shows and counts this marker alongside other UE devices.
+    el.className = 'device-marker device-ue';
+    el.title = 'Phone (UE) — drag to reposition';
  
     Object.assign(el.style, {
       position:     'absolute',
@@ -93,10 +116,11 @@
   }
 
   function applyPos() {
-    const el = document.getElementById('phone-marker');
+    const el  = document.getElementById('phone-marker');
+    const pos = posFor(activeFloor());
     if (el) {
-      el.style.left = phonePos.left + '%';
-      el.style.top  = phonePos.top  + '%';
+      el.style.left = pos.left + '%';
+      el.style.top  = pos.top  + '%';
     }
   }
 
@@ -107,6 +131,7 @@
     e.stopPropagation();   /* prevent #floor-viewport pan handler from firing */
     e.preventDefault();
     isDragging = true;
+    preDragPos = { ...posFor(activeFloor()) };   // snapshot for undo
 
     const el = document.getElementById('phone-marker');
     if (el) {
@@ -121,7 +146,7 @@
   function onMMove(e) {
     if (!isDragging) return;
     const p = clientToPercent(e.clientX, e.clientY);
-    if (p) { phonePos = p; applyPos(); }
+    if (p) { phonePositions[activeFloor()] = p; applyPos(); }
   }
 
   function onMUp() {
@@ -136,7 +161,24 @@
 
     window.removeEventListener('mousemove', onMMove);
     window.removeEventListener('mouseup',   onMUp);
+    const pre   = preDragPos; preDragPos = null;
+    const floor = activeFloor();
+    const cur   = phonePositions[floor];
     savePos();
+    if (pre && cur && (pre.left !== cur.left || pre.top !== cur.top) && window.UndoStack) {
+      window.UndoStack.push({
+        label: 'move phone',
+        undo: async () => {
+          phonePositions[floor] = { left: pre.left, top: pre.top };
+          applyPos();
+          await fetch('/api/phones/' + floor, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(pre),
+          });
+        },
+      });
+    }
   }
 
   /* ─────────────────────────────────────────
@@ -146,6 +188,7 @@
     e.stopPropagation();
     if (e.touches.length !== 1) return;
     isDragging = true;
+    preDragPos = { ...posFor(activeFloor()) };
     window.addEventListener('touchmove', onTMove, { passive: false });
     window.addEventListener('touchend',  onTEnd);
   }
@@ -154,14 +197,31 @@
     if (!isDragging) return;
     e.preventDefault();
     const p = clientToPercent(e.touches[0].clientX, e.touches[0].clientY);
-    if (p) { phonePos = p; applyPos(); }
+    if (p) { phonePositions[activeFloor()] = p; applyPos(); }
   }
 
   function onTEnd() {
     isDragging = false;
     window.removeEventListener('touchmove', onTMove);
     window.removeEventListener('touchend',  onTEnd);
+    const pre   = preDragPos; preDragPos = null;
+    const floor = activeFloor();
+    const cur   = phonePositions[floor];
     savePos();
+    if (pre && cur && (pre.left !== cur.left || pre.top !== cur.top) && window.UndoStack) {
+      window.UndoStack.push({
+        label: 'move phone',
+        undo: async () => {
+          phonePositions[floor] = { left: pre.left, top: pre.top };
+          applyPos();
+          await fetch('/api/phones/' + floor, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(pre),
+          });
+        },
+      });
+    }
   }
 
   /* ─────────────────────────────────────────
@@ -174,6 +234,8 @@
     if (old) old.remove();
     wrap.appendChild(makeMarker());
     applyPos();
+    // Keep the UE layer count in sync — the phone counts as a UE.
+    if (typeof window.refreshLayerCounts === 'function') window.refreshLayerCounts();
   }
 
   /* ─────────────────────────────────────────
@@ -191,7 +253,11 @@
           return n.id === 'floor-img';
         });
       });
-      if (floorRebuilt) inject();
+      if (!floorRebuilt) return;
+      inject();
+      // Re-fetch from the server whenever a different floor becomes active
+      const f = activeFloor();
+      if (loadedFloor !== f) loadPos(f);
     }).observe(wrap, { childList: true });
   }
 
@@ -204,7 +270,7 @@
 
 
   /* ─── INIT ─── */
-  loadPos();
+  loadPos(activeFloor());
   watchFloor();
   // inject as soon as floor-wrap exists
   const waitForFloor = setInterval(function(){

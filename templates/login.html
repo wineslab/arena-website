@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body.auth {
+      margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-page, #f1f3f4);
+      font-family: 'Google Sans', system-ui, sans-serif;
+      color: var(--text, #202124);
+    }
+    .auth-card {
+      width: 360px; max-width: 92vw;
+      background: var(--bg-card, #fff);
+      border: 1px solid var(--border, #dadce0);
+      border-radius: var(--radius-lg, 12px);
+      box-shadow: 0 1px 3px rgba(60,64,67,.16), 0 4px 12px rgba(60,64,67,.10);
+      padding: 32px 28px;
+    }
+    .auth-brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 22px; font-weight: 700; margin-bottom: 4px;
+    }
+    .auth-brand .material-icons { color: var(--google-blue, #1a73e8); }
+    .auth-brand small { color: var(--text2, #5f6368); font-weight: 400; font-size: 14px; }
+    .auth-sub { color: var(--text2, #5f6368); font-size: 13px; margin: 0 0 22px; }
+    .auth-field { margin-bottom: 16px; }
+    .auth-field label {
+      display: block; font-size: 12px; font-weight: 500;
+      color: var(--text2, #5f6368); margin-bottom: 6px;
+    }
+    .auth-field input {
+      width: 100%; box-sizing: border-box;
+      padding: 11px 12px; font-size: 14px;
+      border: 1px solid var(--border, #dadce0);
+      border-radius: var(--radius, 8px);
+      font-family: inherit; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .auth-field input:focus {
+      border-color: var(--google-blue, #1a73e8);
+      box-shadow: 0 0 0 3px var(--google-blue-bg, #e8f0fe);
+    }
+    .auth-btn {
+      width: 100%; padding: 11px 12px; margin-top: 6px;
+      font-size: 14px; font-weight: 500; font-family: inherit;
+      color: #fff; background: var(--google-blue, #1a73e8);
+      border: none; border-radius: var(--radius-pill, 999px);
+      cursor: pointer; transition: background .15s;
+    }
+    .auth-btn:hover { background: var(--google-blue-hover, #1765d1); }
+    .auth-flash {
+      font-size: 13px; padding: 10px 12px; border-radius: var(--radius, 8px);
+      margin-bottom: 18px;
+    }
+    .auth-flash.error { background: var(--red-dim, #fce8e6); color: var(--red-text, #c5221f); }
+    .auth-flash.info  { background: var(--blue-dim, #e8f0fe); color: var(--blue-text, #1765d1); }
+  </style>
+</head>
+<body class="auth">
+  <form class="auth-card" method="POST" action="{{ url_for('auth.login', next=request.args.get('next','')) }}">
+    <div class="auth-brand">
+      <span class="material-icons">place</span>
+      <span>Arena <small>@Boston</small></span>
+    </div>
+    <p class="auth-sub">Sign in with your testbed (LDAP) account.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="auth-flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="auth-field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username"
+             autofocus required>
+    </div>
+    <div class="auth-field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password"
+             autocomplete="current-password" required>
+    </div>
+    <button class="auth-btn" type="submit">Sign in</button>
+  </form>
+</body>
+</html>
