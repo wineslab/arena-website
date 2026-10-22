@@ -1,70 +1,116 @@
-# Arena — Patch Antenna Mapper
+<div align="center">
 
-A local Flask web app for managing the antenna ↔ USRP wiring in the Arena
-testbed (6th + 7th floor). Runs at <http://localhost:8080>.
+# 📡 Arena — Patch Antenna Mapper
+
+**Floor-plan map · antenna ↔ USRP wiring · 3D rack view · reservations**
+
+![Flask](https://img.shields.io/badge/Flask-3.1-000000?logo=flask&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker_Compose-ready-2496ED?logo=docker&logoColor=white)
+![Auth](https://img.shields.io/badge/Sign--in-LDAP-555555?logo=openldap&logoColor=white)
+
+</div>
 
 ---
 
-## TL;DR — how to run it
+## 🗺️ How it fits together
 
-```bash
-pip3 install -r requirements.txt
-docker compose up -d          # start the PostgreSQL database (in Docker)
-python3 app.py
+```mermaid
+flowchart LR
+    U(["👤 Browser<br/>localhost:8080"]):::user
+
+    subgraph DC["🐳 docker compose up"]
+        direction TB
+        APP["🧩 <b>arena-app</b><br/>Flask · app.py"]:::app
+        DB[("🗄️ <b>arena-db</b><br/>PostgreSQL 16")]:::db
+        APP <--> DB
+    end
+
+    REPO["📦 <b>This repo</b><br/>code · floor plans<br/>default antenna map"]:::code
+    LDAP["🔐 <b>Lab LDAP</b><br/>sign-in"]:::ext
+
+    U --> APP
+    REPO -. builds .-> APP
+    APP -. login .-> LDAP
+
+    classDef user fill:#F1EFE8,stroke:#888780,color:#2C2C2A
+    classDef app  fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef db   fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    classDef code fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef ext  fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    style DC fill:transparent,stroke:#2496ED,stroke-dasharray:5 5
 ```
 
-| URL | What it is |
+## 📦 What lives where
+
+| | 📁 Repo (code) | 🗄️ Database |
+|---|:---:|:---:|
+| 🏢 Floor plans — 6th & 7th floor | ✅ | |
+| 📍 Default positions — 68 antennas (AR1 · AR2) | ✅ | |
+| 🗄️ Rack layout + lab equipment | ✅ | |
+| ✋ Antennas moved on the map | | ✅ |
+| 🔌 Antenna ↔ USRP IP / port mappings | | ✅ |
+| 📱 Radio / phone markers | | ✅ |
+| 📅 Reservations · 🧪 test history · 👥 roles | | ✅ |
+
+> [!TIP]
+> A fresh start has an **empty database** — the map shows every antenna at its
+> default spot. Everything in the 🗄️ column fills in as people use the site.
+
+## 🗄️ Where's the database?
+
+```mermaid
+flowchart LR
+    C["🐳 container<br/><b>arena-db</b>"]:::db --> V[("💾 Docker volume<br/><b>arena-pgdata</b>")]:::db
+    W["🌐 <b>/db</b> page<br/>admins, read-only"]:::app --> C
+    T["⌨️ <b>psql</b><br/>terminal"]:::app --> C
+    classDef db  fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    classDef app fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+```
+
+| Want to… | Do |
 |---|---|
-| <http://localhost:8080> | Main UI (map view + rack view toggle) |
-| <http://localhost:8080/admin> | Permissions panel — assign roles to users/groups (admin only) |
-| <http://localhost:8080/db> | Read-only DB viewer (all tables) (admin only) |
-| <http://localhost:8080/api/health> | DB connectivity check |
+| 👀 Browse every table | open `/db` in the site (admin) |
+| ⌨️ Query it directly | `docker compose exec db psql -U arena arena` |
+| 💾 Back it up | `docker compose exec db pg_dump -U arena arena > backup.sql` |
+| 🧹 Wipe it (start empty) | `docker compose down -v && docker compose up -d` |
 
-The database is **PostgreSQL running in Docker** (see `docker-compose.yml`); the
-app connects via `DATABASE_URL` in `.env`
-(`postgresql+psycopg2://arena:arena@localhost:5432/arena`). To temporarily fall
-back to the old local file DB, set `DATABASE_URL=sqlite:///arena.db`.
+## 🚀 Replicate it
 
-**Migrating existing SQLite data into Postgres** (one-time): with the DB
-container up, run `python3 migrate_sqlite_to_postgres.py` — it copies every row
-from `instance/arena.db` into Postgres and seeds the bootstrap admin.
-
-### Database (Docker) cheatsheet
-```bash
-docker compose up -d        # start
-docker compose ps           # health
-docker compose logs -f db   # tail logs
-docker compose down         # stop (data persists in the arena-pgdata volume)
-docker compose down -v      # stop AND wipe all data
+```mermaid
+flowchart LR
+    A["1️⃣ <b>Clone</b>"]:::s --> B["2️⃣ <b>Configure</b><br/>.env"]:::s --> C["3️⃣ <b>Start</b><br/>docker compose"]:::s --> D["✅ <b>Open</b><br/>:8080"]:::ok
+    classDef s  fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef ok fill:#E1F5EE,stroke:#0F6E56,color:#04342C
 ```
 
-### Run, stop & monitor (helper scripts)
-
-Arena is two processes: the **web** app (Flask, port 8080) and the **db**
-(PostgreSQL in the `arena-db` Docker container). These scripts wrap both:
-
 ```bash
-./start.sh          # launch the Flask app in the background (logs → logs/arena.log, pid → run/arena.pid)
-./stop.sh           # stop it (and sweep any leftover process on the port)
-./logs.sh [N]       # tail just the Flask log (follow live, or print the last N lines)
-./monitor.sh        # live dashboard for BOTH web + db
+git clone git@github.com:wineslab/arena-website.git && cd arena-website
+cp .env.example .env              # SECRET_KEY + LDAP_* values
+docker compose up -d --build      # → http://localhost:8080
 ```
 
-**`monitor.sh`** is the one to reach for when you want to know what's happening
-in real time across both apps:
+> [!NOTE]
+> 🔐 Sign-in goes through the lab LDAP server — run it on the lab network.
+> Put your username in `ARENA_BOOTSTRAP_ADMINS` to be admin on first start.
 
-| Command | What it shows |
+| Need to… | Run |
 |---|---|
-| `./monitor.sh` | Status panel, then follows **both** logs live |
-| `./monitor.sh status` | Print the status panel once and exit |
-| `./monitor.sh watch` | Refresh the panel every 2s (no log stream) |
-| `./monitor.sh logs` | Skip the panel, just stream both logs |
+| 🔁 Use another port | `ARENA_PORT=9090 docker compose up -d` |
+| 🐘 Port 5432 already taken | `ARENA_DB_PORT=55432 docker compose up -d` |
+| 📜 Follow app logs | `docker compose logs -f app` |
+| ⏹️ Stop (data kept) | `docker compose down` |
 
-The panel shows a colored health dot per app — **web** (pid · port · live HTTP
-probe) and **db** (container state · health check) — plus the most recent error
-from the web log, so you can see at a glance what's failing. In the live stream
-each line is tagged `[web]`/`[db]`; errors and tracebacks are **red**, warnings
-and HTTP 4xx/5xx are **yellow**. Colors auto-disable when piped to a file.
+---
+
+## 🔗 Pages
+
+| URL | What it is | Role |
+|---|---|:---:|
+| `/` | 🗺️ Map view + rack view toggle | viewer |
+| `/admin` | 👥 Permissions — roles for users / groups | admin |
+| `/db` | 🗄️ Read-only database viewer | admin |
+| `/api/health` | 💓 App + DB health check | public |
 
 ---
 
@@ -100,7 +146,7 @@ grant. User-level changes take effect on the user's **next request**; group and
 LDAP changes apply at their **next login**.
 
 **Bootstrap admin.** On first startup the username(s) in `ARENA_BOOTSTRAP_ADMINS`
-(default `kallangaattuvalasua`) are seeded as `admin` — *only if they have no
+are seeded as `admin` — *only if they have no
 grant yet* — so the first admin can sign in and grant everyone else. These are
 ordinary admin grants, not a separate tier; change or remove them from `/admin`
 once others are set up. (You can't strip your own admin from the panel, to avoid
@@ -198,32 +244,29 @@ in the DB without firing up `psql`.
 
 ---
 
-## Project structure
+## 🧱 Repo map
 
 ```
 arena-website/
-├── app.py              Flask app factory; runs migrations on startup
-├── config.py           Config — DB URL + USRP_OUTPUT_PATH
-├── models.py           SQLAlchemy models + helper functions
+├── 🐳 docker-compose.yml      arena-db (Postgres) + arena-app (Flask)
+├── 🐳 Dockerfile              arena-app image
+├── 🧩 app.py                  app factory · startup migrations
+├── ⚙️  config.py               env-driven config (DB, LDAP, roles)
+├── 🗄️  models.py               SQLAlchemy models + helpers
 ├── routes/
-│   ├── api.py          /api/* — JSON REST (mappings, devices, phones, export)
-│   ├── views.py        /, /floorplan, /db — HTML pages
-│   └── tests.py        /api/test/* — USRP test runner (currently stubbed)
-├── templates/
-│   ├── index.html      Main SPA shell
-│   └── db.html         Database viewer
-├── static/
-│   ├── css/main.css    All styles
-│   ├── js/app.js       Most of the UI logic (~1500+ lines)
-│   ├── js/phone.js     Phone marker drag
-│   ├── js/devices.js   Device CRUD
-│   └── img/
-│       └── floorplan.svg
-├── arena.db            SQLite fallback (live app uses Postgres by default)
-├── arena_backup.sql    Postgres dump
-├── requirements.txt
-├── requirements.sh     Convenience installer
-└── README.md
+│   ├── api.py                 /api/*  mappings · devices · positions · export
+│   ├── views.py               /  /floorplan  /db
+│   ├── auth.py                /login  LDAP + roles
+│   ├── admin.py               /admin  permissions
+│   ├── reservations.py        /api/reservations/*
+│   └── tests.py               /api/test/*  (runner stubbed)
+├── templates/                 index · login · admin · db · 403
+└── static/
+    ├── img/                   🏢 floorplan.svg (6th) · floorplan-7.svg (7th)
+    ├── js/app.js              📍 ANTENNA_COORDS — default antenna map
+    ├── js/rack3d*.js          🗄️ 3D rack view + lab equipment list
+    ├── js/                    devices · phone · reserve · intro
+    └── css/main.css
 ```
 
 ---
@@ -284,7 +327,7 @@ are intact; the runner function is a stub.
 Open a session:
 
 ```bash
-psql arena          # or: sqlite3 arena.db
+docker compose exec db psql -U arena arena
 ```
 
 | Table | Model | Purpose |
@@ -329,21 +372,3 @@ run on startup — see `_migrate_*` in `app.py`.
 |---|---|---|
 | `DATABASE_URL` | `postgresql://localhost/arena` | SQLAlchemy connection string |
 | `USRP_OUTPUT_PATH` | `<repo>/output/runs` | Where the test runner writes plots and `result.json` per run |
-
----
-
-## One-time setup (PostgreSQL, macOS)
-
-```bash
-brew install postgresql@17
-brew services start postgresql@17
-echo 'export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-createdb arena
-```
-
-Backup / restore:
-```bash
-pg_dump arena > arena_backup.sql
-psql arena < arena_backup.sql
-```

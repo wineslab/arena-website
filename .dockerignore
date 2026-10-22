@@ -1,0 +1,14 @@
+.git
+.env
+arena-website/
+__pycache__/
+*.pyc
+*.db
+instance/
+logs/
+run/
+output/
+*.dat
+plotout_*.png
+.claude/
+.DS_Store

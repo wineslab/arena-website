@@ -1,6 +1,9 @@
-Flask>=3.0.0
-Flask-SQLAlchemy>=3.1.0
-Flask-Login>=0.6.3
-ldap3>=2.9.1
-psycopg2-binary>=2.9.0
-python-dotenv>=1.0.0
+# Pinned to the versions the live site runs (2026-10-22).
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+ldap3==2.9.1
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+SQLAlchemy==2.0.49
+Werkzeug==3.1.8

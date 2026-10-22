@@ -1,13 +1,11 @@
-# Arena database — PostgreSQL in Docker.
+# Arena — web app + PostgreSQL in Docker.
 #
-#   docker compose up -d        # start the DB (creates the `arena-pgdata` volume)
+#   cp .env.example .env        # fill in SECRET_KEY + LDAP settings
+#   docker compose up -d --build   # start DB + app on http://localhost:8080
 #   docker compose ps           # check health
-#   docker compose logs -f db   # tail logs
+#   docker compose logs -f app  # tail app logs
 #   docker compose down         # stop (data persists in the volume)
 #   docker compose down -v      # stop AND wipe the data volume
-#
-# The Flask app connects via DATABASE_URL in .env:
-#   postgresql+psycopg2://arena:arena@localhost:5432/arena
 #
 # Credentials are local-dev defaults; override with POSTGRES_* env vars if you
 # expose this beyond localhost.
@@ -21,14 +19,31 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arena}
       POSTGRES_DB:       ${POSTGRES_DB:-arena}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${ARENA_DB_PORT:-5432}:5432"   # host access for psql; the app uses the compose network
     volumes:
       - arena-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arena} -d ${POSTGRES_DB:-arena}"]
+      # -h localhost: the init-time server only listens on the socket, so this
+      # stays unhealthy until first-time setup has finished.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER:-arena} -d ${POSTGRES_DB:-arena}"]
       interval: 5s
       timeout: 5s
       retries: 12
+
+  app:
+    build: .
+    container_name: arena-app
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-arena}:${POSTGRES_PASSWORD:-arena}@db:5432/${POSTGRES_DB:-arena}
+    ports:
+      - "${ARENA_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   arena-pgdata:

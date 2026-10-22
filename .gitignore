@@ -40,3 +40,9 @@ plotout_*.png
 # Local tooling / placeholders
 .claude/
 requirements.sh
+
+# Host-run helper scripts (the repo runs via docker compose)
+start.sh
+stop.sh
+logs.sh
+monitor.sh
